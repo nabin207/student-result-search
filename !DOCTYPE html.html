@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8" />
+  <title>विद्यार्थी नतिजा खोजी</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; background: #f0f4f8; }
+    .card { background: white; padding: 2rem; border-radius: 10px; max-width: 700px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    input, button { padding: 0.5rem; margin-top: 1rem; width: 100%; font-size: 1rem; }
+    .result { margin-top: 1.5rem; }
+    .label { font-weight: bold; margin-top: 1rem; }
+    ul { padding-left: 1.2rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔍 विद्यार्थी नतिजा खोज्नुहोस्</h2>
+    <input type="text" id="symbolInput" placeholder="Symbol नम्बर टाइप गर्नुहोस्" />
+    <button onclick="searchResult()">Search</button>
+    <div class="result" id="resultBox">Loading data...</div>
+  </div>
+
+  <script>
+    let students = [];
+
+    // Google Sheet बाट डेटा ल्याउने URL (Opensheet API)
+    const SHEET_ID = "1MhouQbiin4gEa4tFtez_Ck5wLSVbEH4F5Q3vNahfwqY";
+    const SHEET_NAME = "Sheet1";  // तपाईँको Sheet नाम अनुसार मिलाउनुहोस्
+
+    fetch(`https://opensheet.elk.sh/${SHEET_ID}/${SHEET_NAME}`)
+      .then(res => res.json())
+      .then(data => {
+        // डेटा ल्याएपछि students मा map गर्ने, हरेक पंक्तिमा Subject र ग्रेडहरू निकालनु
+        students = data.map(r => {
+          const subjects = [];
+          for (let i = 1; i <= 9; i++) {
+            const sub = r[`Subject${i}`];
+            const th = r[`Theory${i}`];
+            const pr = r[`Practical${i}`];
+            if (sub) subjects.push({name: sub, theory: th || "-", practical: pr || "-"});
+          }
+          return {
+            symbol: r["Symbol Number"] ? r["Symbol Number"].toString().trim() : "",
+            name: r["Name"] || "-",
+            dob: r["Date of birth"] || "-",
+            gpa: r["GPA"] || "-",
+            subjects: subjects
+          };
+        });
+        document.getElementById("resultBox").innerHTML = "<em>डेटा लोड भयो। Symbol नम्बर टाइप गरेर खोज्नुहोस्।</em>";
+      })
+      .catch(err => {
+        document.getElementById("resultBox").innerHTML = "<span style='color:red;'>डेटा लोड गर्न समस्या आयो।</span>";
+        console.error(err);
+      });
+
+    function searchResult() {
+      const sym = document.getElementById("symbolInput").value.trim();
+      const rb = document.getElementById("resultBox");
+      if (!sym) {
+        rb.innerHTML = "<p style='color:red;'>कृपया Symbol नम्बर प्रविष्ट गर्नुहोस्।</p>";
+        return;
+      }
+      const stu = students.find(s => s.symbol === sym);
+      if (!stu) {
+        rb.innerHTML = `<p style='color:red;'>Symbol नम्बर <strong>${sym}</strong> को नतिजा भेटिएन।</p>`;
+        return;
+      }
+
+      let out = `<div class='label'>नाम:</div> ${stu.name}<br>
+                 <div class='label'>जन्म मिति:</div> ${stu.dob}<br>
+                 <div class='label'>GPA:</div> ${stu.gpa}<br>
+                 <div class='label'>विषयहरू र ग्रेडहरू:</div><ul>`;
+      stu.subjects.forEach(s => {
+        out += `<li>${s.name}: Theory - ${s.theory}, Practical - ${s.practical}</li>`;
+      });
+      out += "</ul>";
+      rb.innerHTML = out;
+    }
+  </script>
+</body>
+</html>
